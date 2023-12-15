@@ -1,0 +1,129 @@
+version: "3.9"
+services:
+
+
+  # docker-mongodb:
+  #   container_name: docker-mongodb
+  #   image: mongo
+  #   ports:
+  #     - 27017:27017
+  #   environment:
+  #     - MONGODB_URL=mongodb://localhost:27017/4twin8
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - Eureka
+
+  docker-mongodb:
+    container_name: docker-mongodb
+    image: mongo
+    ports:
+      - 27017:27017
+    environment:
+      - MONGODB_URL=mongodb://localhost:27017/4twin8
+    restart: unless-stopped
+
+  Blog:
+    container_name: blog-service
+    image: "blog"
+    build: .\service1
+    ports:
+      - "8083:8083"
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://serviceregistry:8761/eureka/
+    depends_on:
+      - "Eureka"
+
+
+  Eureka:
+    container_name: eureka-service
+    build: .\servereureka
+    hostname: serviceregistry
+    ports:
+      - "8761:8761"
+    image: "eureka"
+    environment:
+      - eureka.client.serviceUrl.defaultZone=http://serviceregistry:8761/eureka/
+
+  Music:
+    container_name: music-service
+    image: "music"
+    build: .\service2
+    ports:
+      - "8085:8085"
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://serviceregistry:8761/eureka/
+    depends_on:
+      - Eureka
+
+  Event:
+    container_name: event--service
+    image: "event"
+    build: .\service3
+    ports:
+      - "8084:8084"
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://serviceregistry:8761/eureka/
+    depends_on:
+      - Eureka
+  
+  
+
+  # Backend:
+  #   container_name: backend-user
+  #   build: /projet2
+  #   ports:
+  #     - "3000:3000"
+  #   image: backend
+  #   environment:
+  #     - MONGODB_URL=mongodb://docker-mongodb:27017/4twin8
+  #     - EUREKA_HOST=eureka
+  #     - EUREKA_PORT=8761
+  #     - EUREKA_SERVER_PATH=/eureka/apps/
+  #   depends_on:
+  #     - Eureka
+  #     - docker-
+  
+  Backend:
+    container_name: backend-user
+    ports:
+      - "3000:3000"
+    image: backend
+    environment:
+      - MONGODB_URL=mongodb://docker-mongodb:27017/4twin8
+      - EUREKA_HOST=eureka
+      - EUREKA_PORT=8761
+      - EUREKA_SERVER_PATH=/eureka/apps/
+    depends_on:
+      - Eureka
+      - docker-mongodb
+
+
+
+  ApiGateway:
+    container_name: apigateway-service
+    build: .\apigateway
+    image: "apigateway"
+    restart: always
+    depends_on:
+      - Eureka
+      - docker-mongodb
+    ports:
+      - "9999:9999"
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://Eureka:8761/eureka/
+      - EUREKA_INSTANCE_LEASERENEWALINTERVALINSECONDS=10
+      - EUREKA_INSTANCE_LEASEEXPIRATIONDURATIONINSECONDS=30
+      - SPRING_CLOUD_GATEWAY_ROUTES_0_ID=Music
+      - SPRING_CLOUD_GATEWAY_ROUTES_0_URI=http://Music:8085
+      - SPRING_CLOUD_GATEWAY_ROUTES_0_PREDICATES_0=Path=/service2/**
+      - SPRING_CLOUD_GATEWAY_ROUTES_1_ID=Event
+      - SPRING_CLOUD_GATEWAY_ROUTES_1_URI=http://Event:8084
+      - SPRING_CLOUD_GATEWAY_ROUTES_1_PREDICATES_0=Path=Path=/service3/**
+      - SPRING_CLOUD_GATEWAY_ROUTES_2_ID=Backend
+      - SPRING_CLOUD_GATEWAY_ROUTES_2_URI=http://localhost:3000
+      - SPRING_CLOUD_GATEWAY_ROUTES_2_PREDICATES_0=Path=/user/**
+      - SPRING_CLOUD_GATEWAY_ROUTES_2_ID=Blog
+      - SPRING_CLOUD_GATEWAY_ROUTES_2_URI=http://Blog:8083
+      - SPRING_CLOUD_GATEWAY_ROUTES_2_PREDICATES_0=Path=/service1/**
+
+      
